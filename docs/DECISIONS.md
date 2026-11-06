@@ -14,3 +14,11 @@ Format: tanggal, keputusan, alasan.
 
 ## Terbuka
 - `npm install` gagal: `registry.npmjs.org` tidak terjangkau dari mesin ini (Packagist normal). Bootstrap, Sass, dan build Vite belum terpasang.
+
+## 2026-11-06 Inti data (I1, I2, I3)
+- **Status versi tidak disimpan.** Karena versi append-only, status diturunkan dari tabel `version_confirmations` (juga append-only, unik per versi+pihak). Versi berlaku = nomor tertinggi dengan `setuju` dari `pemilik` dan `tukang`.
+- **Hash:** `sha256(JSON kanonik {installments, number, reason, scope, total_amount} + previous_hash)`. Kunci diurutkan alfabet. Perubahan lewat SQL mentah terdeteksi oleh `hashIsValid()`, tetapi tidak dicegah (tidak ada trigger DB).
+- **Rencana termin disimpan di JSON versi** (`installments`). Tabel termin hidup (F2: foto, status) dibuat di fase berikutnya.
+- **Pembuat mengonfirmasi lewat aplikasi, pihak lawan lewat tautan.** Keduanya menulis ke `version_confirmations`.
+- **ULID** di kolom `ulid` untuk URL publik; `id` auto-increment tidak pernah dipakai di URL.
+- Method penambah versi bernama `AgreementVersion::addTo()` (`append()` bentrok dengan Eloquent).
