@@ -2,7 +2,7 @@
 @section('title', 'Langkah 3: Termin')
 @section('content')
 @php use App\Support\Rupiah; $old = $agreement->installments ?? []; @endphp
-<p class="text-muted mb-1">Langkah 3 dari 3</p>
+<div class="jt-steps-label">Langkah 3 dari 3</div><div class="jt-steps" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="3"><i class="on"></i><i class="on"></i><i class="on"></i></div>
 <h1 class="h4">Dibayar bertahap bagaimana?</h1>
 <p>Total harga <strong>{{ Rupiah::format($agreement->total_amount) }}</strong>. Jumlah semua termin harus sama.</p>
 @include('partials.errors')

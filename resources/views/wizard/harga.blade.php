@@ -1,7 +1,7 @@
 @extends('layouts.janji')
 @section('title', 'Langkah 2: Harga')
 @section('content')
-<p class="text-muted mb-1">Langkah 2 dari 3</p>
+<div class="jt-steps-label">Langkah 2 dari 3</div><div class="jt-steps" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="2"><i class="on"></i><i class="on"></i><i></i></div>
 <h1 class="h4">Berapa harganya?</h1>
 @include('partials.errors')
 <form method="POST" action="{{ route('wizard.harga', $agreement) }}">

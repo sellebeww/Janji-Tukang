@@ -1,7 +1,7 @@
 @extends('layouts.janji')
 @section('title', 'Langkah 1: Lingkup')
 @section('content')
-<p class="text-muted mb-1">Langkah 1 dari 3</p>
+<div class="jt-steps-label">Langkah 1 dari 3</div><div class="jt-steps" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1"><i class="on"></i><i></i><i></i></div>
 <h1 class="h4">Pekerjaan apa yang disepakati?</h1>
 @include('partials.errors')
 <form method="POST" action="{{ $agreement ? route('wizard.lingkup', $agreement) : route('wizard.simpan') }}">
