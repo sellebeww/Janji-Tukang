@@ -1,7 +1,12 @@
 @extends('layouts.janji')
 @section('title', 'Cek kesepakatan')
 @section('content')
+@if ($diff)
+<p>Pembuat kesepakatan mengusulkan perubahan. Sebelum Anda setuju, kesepakatan yang lama tetap berlaku.</p>
+@include('partials.perubahan', ['diff' => $diff, 'reason' => $version->reason, 'versus' => $base ? 'versi '.$base->number.' yang berlaku' : 'versi sebelumnya'])
+@else
 <p>Silakan cek catatan kesepakatan ini.</p>
+@endif
 @include('partials.summary')
 <form method="POST" action="{{ $url }}" class="d-grid gap-2 mt-3">
     @csrf

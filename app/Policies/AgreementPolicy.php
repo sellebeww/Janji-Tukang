@@ -26,6 +26,14 @@ class AgreementPolicy
     {
         $view = $this->view($user, $agreement);
 
-        return $view->denied() ? $view : ($agreement->status === 'menunggu_konfirmasi' ? Response::allow() : Response::deny());
+        return $view->denied() ? $view : ($agreement->pendingVersion() ? Response::allow() : Response::deny());
+    }
+
+    /** Addendum: hanya pembuat, hanya saat kesepakatan aktif atau pihak lawan sudah meminta perubahan. */
+    public function amend(User $user, Agreement $agreement): Response
+    {
+        $view = $this->view($user, $agreement);
+
+        return $view->denied() ? $view : (in_array($agreement->status, ['aktif', 'perlu_diubah'], true) ? Response::allow() : Response::deny('Kesepakatan belum bisa diubah.'));
     }
 }

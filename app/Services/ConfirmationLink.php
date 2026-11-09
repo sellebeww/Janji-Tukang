@@ -14,6 +14,8 @@ class ConfirmationLink
 {
     public const KONFIRMASI_VERSI = 'konfirmasi_versi';
 
+    public const KONFIRMASI_TERMIN = 'konfirmasi_termin';
+
     /** Terbitkan tautan. URL lengkap hanya ada di nilai kembalian ini. */
     public function issue(string $purpose, int $targetId): string
     {
@@ -28,6 +30,12 @@ class ConfirmationLink
         ]);
 
         return URL::temporarySignedRoute('konfirmasi.show', $expires, ['token' => $raw]);
+    }
+
+    /** Tujuan token (untuk memilih halaman). Tidak memvalidasi apa pun; validasi tetap di resolve/consume. */
+    public function purposeOf(string $raw): ?string
+    {
+        return ConfirmationToken::where('token_hash', hash('sha256', $raw))->value('purpose');
     }
 
     /** Cek tautan tanpa menghabiskannya (melihat ringkasan boleh berulang). */

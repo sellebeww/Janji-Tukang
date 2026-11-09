@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Agreement;
+use App\Models\ReminderLog;
 use App\Notifiers\ConfirmationNotifier;
 use App\Services\AgreementFlow;
 use App\Services\ConfirmationLink;
+use App\Services\TerminFlow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,13 +18,18 @@ class AgreementController extends Controller
     {
         return view('agreements.index', [
             'agreements' => $request->user()->hasMany(Agreement::class)->latest()->get(),
+            'reminders' => ReminderLog::whereNull('sent_at')
+                ->whereHas('termin', fn ($q) => $q->where('status', '!=', 'selesai')
+                    ->whereHas('agreement', fn ($q) => $q->where('user_id', $request->user()->id)))
+                ->with('termin.agreement')->get()->sortBy('termin.due_date'),
         ]);
     }
 
     /** Ringkasan satu halaman (ramah cetak). */
-    public function show(Agreement $agreement): View
+    public function show(Agreement $agreement, TerminFlow $termins): View
     {
         $this->authorize('view', $agreement);
+        $termins->materialize($agreement); // kesepakatan aktif yang dibuat sebelum Fase 3
 
         $confirmations = $agreement->versions()->with('confirmations')->get()->flatMap->confirmations;
 
@@ -30,6 +37,9 @@ class AgreementController extends Controller
             'agreement' => $agreement,
             's' => $agreement->summary(),
             'confirmations' => $confirmations,
+            'pending' => $pending = $agreement->pendingVersion(),
+            'pendingDiff' => $pending?->number > 1 ? $pending->diffFrom($agreement->effectiveVersion()) : null,
+            'termins' => $agreement->termins()->with(['photos', 'confirmations'])->get(),
         ]);
     }
 
@@ -47,12 +57,13 @@ class AgreementController extends Controller
     {
         $this->authorize('link', $agreement);
 
-        $version = $agreement->versions()->reorder('number', 'desc')->firstOrFail();
+        $version = $agreement->pendingVersion();
         $url = $links->issue(ConfirmationLink::KONFIRMASI_VERSI, $version->id);
 
         $text = sprintf(
-            "Halo %s, ini catatan kesepakatan kerja \"%s\" dari %s. Mohon dicek lalu konfirmasi lewat tautan ini (berlaku %d hari): %s",
-            $agreement->counterparty_name, $agreement->title, $agreement->user->name,
+            'Halo %s, ini %s kerja "%s" dari %s. Mohon dicek lalu konfirmasi lewat tautan ini (berlaku %d hari): %s',
+            $agreement->counterparty_name, $version->kind === 'addendum' ? 'usulan perubahan kesepakatan' : 'catatan kesepakatan',
+            $agreement->title, $agreement->user->name,
             config('janji.token_ttl_days'), $url,
         );
 

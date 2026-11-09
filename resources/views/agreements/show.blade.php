@@ -1,7 +1,7 @@
 @extends('layouts.janji')
 @section('title', $s['title'])
 @section('content')
-@php $label = ['draft' => 'Draf', 'menunggu_konfirmasi' => 'Menunggu konfirmasi pihak lawan', 'aktif' => 'Aktif: kedua pihak sudah setuju', 'perlu_diubah' => 'Pihak lawan meminta perubahan']; @endphp
+@php $label = ['draft' => 'Draf', 'menunggu_konfirmasi' => 'Menunggu konfirmasi pihak lawan', 'aktif' => 'Aktif: kedua pihak sudah setuju', 'perlu_diubah' => 'Pihak lawan meminta perubahan', 'selesai' => 'Selesai: semua termin sudah dikonfirmasi kedua pihak']; @endphp
 <p class="badge text-bg-secondary no-print">{{ $label[$agreement->status] ?? $agreement->status }}</p>
 @include('partials.errors')
 @include('partials.summary')
@@ -15,7 +15,15 @@
     </div>
 @endif
 
-@if ($agreement->status === 'menunggu_konfirmasi')
+@if ($agreement->status === 'aktif' && $pending && $pending->number > 1)
+    <div class="mt-3">
+        <h2 class="h6">Usulan perubahan menunggu pihak lawan</h2>
+        <p class="small">Versi {{ $pending->number }} (kode {{ $pending->code() }}). Sebelum pihak lawan setuju, versi {{ $s['version_no'] }} tetap berlaku.</p>
+        @include('partials.perubahan', ['diff' => $pendingDiff, 'reason' => $pending->reason, 'versus' => 'versi '.$s['version_no'].' yang berlaku'])
+    </div>
+@endif
+
+@if ($pending && $agreement->status !== 'draft')
     <div class="no-print mt-3">
         @if (session('tautan'))
             <div class="card card-body border-success mb-2">
@@ -30,6 +38,18 @@
             <button class="btn btn-outline-primary w-100">Buat tautan konfirmasi baru</button>
         </form>
     </div>
+@endif
+
+@if (in_array($agreement->status, ['aktif', 'perlu_diubah']))
+    <a class="btn btn-outline-primary w-100 mt-3 no-print" href="{{ route('addendum.create', $agreement) }}">Ubah kesepakatan</a>
+@endif
+@unless ($agreement->isDraft())
+    <a class="btn btn-link w-100 no-print" href="{{ route('agreements.riwayat', $agreement) }}">Riwayat versi</a>
+@endunless
+
+@if ($agreement->status === 'aktif')
+    <h2 class="h6 mt-4">Termin dan bukti pekerjaan</h2>
+    @include('partials.timeline', ['agreement' => $agreement, 'termins' => $termins])
 @endif
 
 @if ($confirmations->isNotEmpty())

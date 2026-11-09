@@ -34,5 +34,6 @@
     Ini catatan bersama dua pihak, bukan nasihat hukum. Aplikasi tidak memegang uang.
     <a href="{{ route('privasi') }}">Privasi</a>
 </footer>
+@stack('scripts')
 </body>
 </html>

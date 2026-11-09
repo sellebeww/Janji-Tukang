@@ -35,6 +35,11 @@ class Agreement extends Model
         return $this->hasMany(AgreementVersion::class)->orderBy('number');
     }
 
+    public function termins(): HasMany
+    {
+        return $this->hasMany(Termin::class)->orderBy('position');
+    }
+
     public function counterpartyRole(): string
     {
         return $this->creator_role === 'pemilik' ? 'tukang' : 'pemilik';
@@ -54,10 +59,39 @@ class Agreement extends Model
             ->first();
     }
 
-    /** Data untuk halaman ringkasan: dari versi terakhir bila sudah diajukan, dari draf bila belum. */
-    public function summary(): array
+    /** Usulan yang masih ditunggu: versi terakhir, belum berlaku, belum ditolak. Usulan lebih baru menggantikan yang lama. */
+    public function pendingVersion(): ?AgreementVersion
     {
-        $src = $this->versions()->reorder('number', 'desc')->first() ?? $this;
+        $last = $this->versions()->reorder('number', 'desc')->with('confirmations')->first();
+        if (! $last || $last->confirmations->contains('decision', 'tolak')) {
+            return null;
+        }
+
+        return $last->id === $this->effectiveVersion()?->id ? null : $last;
+    }
+
+    /** Riwayat: tiap versi dengan status berlaku | menunggu | ditolak | digantikan. */
+    public function history(): array
+    {
+        $versions = $this->versions()->with('confirmations')->get();
+        $effective = $this->effectiveVersion();
+        $last = $versions->last();
+
+        return $versions->map(function (AgreementVersion $v) use ($effective, $last) {
+            $status = match (true) {
+                $v->id === $effective?->id => 'berlaku',
+                $v->confirmations->contains('decision', 'tolak') => 'ditolak',
+                $v->id === $last->id => 'menunggu',
+                default => 'digantikan',
+            };
+            return ['version' => $v, 'status' => $status];
+        })->all();
+    }
+
+    /** Data untuk halaman ringkasan: versi yang diminta; bila tidak ada, versi berlaku, lalu versi terakhir, lalu draf. */
+    public function summary(?AgreementVersion $version = null): array
+    {
+        $src = $version ?? $this->effectiveVersion() ?? $this->versions()->reorder('number', 'desc')->first() ?? $this;
 
         return [
             'title' => $this->title,
@@ -68,6 +102,7 @@ class Agreement extends Model
             'total' => $src->total_amount,
             'installments' => $src->installments ?? [],
             'version_no' => $src instanceof AgreementVersion ? $src->number : null,
+            'version_code' => $src instanceof AgreementVersion ? $src->code() : null,
             'status' => $this->status,
         ];
     }

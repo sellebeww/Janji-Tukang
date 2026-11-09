@@ -4,7 +4,7 @@
     <div class="card-body">
         <h1 class="h4">{{ $s['title'] }}</h1>
         <p class="text-muted mb-3">
-            Catatan kesepakatan @if ($s['version_no']) · Versi {{ $s['version_no'] }} @else · Draf @endif
+            Catatan kesepakatan @if ($s['version_no']) · Versi {{ $s['version_no'] }} · Kode versi <code>{{ $s['version_code'] }}</code> @else · Draf @endif
         </p>
         <dl class="row mb-0">
             <dt class="col-sm-3">{{ ucfirst($s['creator_role']) }}</dt><dd class="col-sm-9">{{ $s['creator_name'] }}</dd>

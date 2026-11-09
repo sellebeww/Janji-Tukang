@@ -3,17 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Agreement;
+use App\Support\InstallmentRows;
 use App\Support\Rupiah;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class WizardController extends Controller
 {
-    private const MAX_TERMIN_ROWS = 6;
-
     public function lingkup(?Agreement $agreement = null): View
     {
         if ($agreement) {
@@ -70,7 +68,7 @@ class WizardController extends Controller
         $this->authorize('update', $agreement);
         abort_unless($agreement->total_amount, 404);
 
-        return view('wizard.termin', ['agreement' => $agreement, 'rows' => self::MAX_TERMIN_ROWS]);
+        return view('wizard.termin', ['agreement' => $agreement, 'rows' => InstallmentRows::MAX_ROWS]);
     }
 
     public function saveTermin(Request $request, Agreement $agreement): RedirectResponse
@@ -78,42 +76,9 @@ class WizardController extends Controller
         $this->authorize('update', $agreement);
         abort_unless($agreement->total_amount, 404);
 
-        // Baris kosong diabaikan; angka dibersihkan lewat Rupiah::parse.
-        $rows = collect($request->input('termin', []))
-            ->filter(fn ($r) => filled($r['title'] ?? null) || filled($r['amount'] ?? null))
-            ->take(self::MAX_TERMIN_ROWS)
-            ->map(fn ($r) => [
-                'title' => trim((string) ($r['title'] ?? '')),
-                'amount' => Rupiah::parse($r['amount'] ?? null),
-                'due_date' => $r['due_date'] ?? null,
-            ])->values();
+        $rows = InstallmentRows::fromInput($request->input('termin'), $agreement->total_amount);
 
-        Validator::make(['termin' => $rows->all()], [
-            'termin' => ['required', 'array', 'min:1'],
-            'termin.*.title' => ['required', 'string', 'max:150'],
-            'termin.*.amount' => ['required', 'integer', 'min:1'],
-            'termin.*.due_date' => ['required', 'date_format:Y-m-d'],
-        ], [
-            'termin.required' => 'Isi minimal satu termin.',
-            'termin.min' => 'Isi minimal satu termin.',
-            'termin.*.title.required' => 'Judul termin wajib diisi.',
-            'termin.*.amount.required' => 'Nominal termin harus angka bulat rupiah.',
-            'termin.*.amount.integer' => 'Nominal termin harus angka bulat rupiah.',
-            'termin.*.amount.min' => 'Nominal termin harus lebih dari nol.',
-            'termin.*.due_date.required' => 'Tanggal jatuh tempo wajib diisi.',
-            'termin.*.due_date.date_format' => 'Tanggal jatuh tempo tidak valid.',
-        ])->validate();
-
-        $sum = $rows->sum('amount');
-        if ($sum !== $agreement->total_amount) {
-            throw ValidationException::withMessages(['termin' => sprintf(
-                'Jumlah termin %s, harus sama dengan total %s (selisih %s).',
-                Rupiah::format($sum), Rupiah::format($agreement->total_amount),
-                Rupiah::format(abs($sum - $agreement->total_amount)),
-            )]);
-        }
-
-        $agreement->update(['installments' => $rows->all()]);
+        $agreement->update(['installments' => $rows]);
 
         return redirect()->route('agreements.show', $agreement);
     }

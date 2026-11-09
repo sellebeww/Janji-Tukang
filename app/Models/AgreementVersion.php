@@ -57,6 +57,7 @@ class AgreementVersion extends Model
             $version = new static([
                 'agreement_id' => $agreement->id,
                 'number' => $number,
+                'kind' => $reason === null ? 'awal' : 'addendum', // addendum <=> ada alasan (alasan ikut di-hash)
                 'scope' => $scope,
                 'total_amount' => $totalAmount,
                 'installments' => $installments,
@@ -86,6 +87,37 @@ class AgreementVersion extends Model
         ];
 
         return hash('sha256', json_encode($content, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).$this->previous_hash);
+    }
+
+    /** Kode versi pendek untuk ditampilkan ke pengguna. */
+    public function code(): string
+    {
+        return strtoupper(substr($this->content_hash, 0, 8));
+    }
+
+    /** Perubahan lingkup/harga/termin dibanding $old (null = tidak ada pembanding). */
+    public function diffFrom(?self $old): array
+    {
+        if (! $old) {
+            return ['scope' => null, 'total' => null, 'installments' => []];
+        }
+        $rows = [];
+        $a = $old->installments;
+        $b = $this->installments;
+        foreach (range(0, max(count($a), count($b)) - 1) as $i) {
+            $x = $a[$i] ?? null;
+            $y = $b[$i] ?? null;
+            if ($x === $y) {
+                continue;
+            }
+            $rows[] = ['no' => $i + 1, 'type' => ! $x ? 'tambah' : (! $y ? 'hapus' : 'ubah'), 'old' => $x, 'new' => $y];
+        }
+
+        return [
+            'scope' => $old->scope !== $this->scope ? [$old->scope, $this->scope] : null,
+            'total' => $old->total_amount !== $this->total_amount ? [$old->total_amount, $this->total_amount] : null,
+            'installments' => $rows,
+        ];
     }
 
     public function hashIsValid(): bool
